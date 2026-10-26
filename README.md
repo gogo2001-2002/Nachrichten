@@ -21,6 +21,17 @@ Die Modulaktion kann aus jedem IP-Symcon-PHP-Skript aufgerufen werden. Ersetze `
 IPS_RequestAction(12345, 'AddMessage', "Alarmmonitor: Test\nVariable: Heizung\nBedingung: Wert zu hoch");
 ```
 
+Für AlarmMonitor-Nachrichten können optionale Zustandsmetadaten als JSON-Umschlag mitgesendet werden. Normale Textaufrufe bleiben unverändert kompatibel:
+
+```php
+$payload = json_encode([
+    'source' => 'AlarmMonitor',
+    'text' => "Meldung: Alarm\nVariable: Heizung",
+    'alarmState' => 'initial' // initial, escalation oder resolved
+], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+IPS_RequestAction(12345, 'AddMessage', $payload);
+```
+
 Eine Nachricht quittieren:
 
 ```php
@@ -34,10 +45,11 @@ Die Nachrichten-IDs findest du im JSON der Instanzvariablen **Nachrichten**. Jed
 - `createdAt`: Unix-Zeitstempel der Erstellung
 - `acknowledged`: Quittierungsstatus
 - `acknowledgedAt`: Unix-Zeitstempel der Quittierung oder `null`
+- `alarmState` (optional): `initial`, `escalation` oder `resolved`; wird nur bei AlarmMonitor-Nachrichten gespeichert
 
 ## Integration der Webvisu
 
-Die Visu liest die String-Variable **Nachrichten** der Modulinstanz. Für Schreibaktionen nutzt sie `IPS_RequestAction` mit den Aktionen `AcknowledgeMessage` bzw. `AddMessage`. Texte werden in der Nachrichtenliste in einem aufklappbaren Bereich mit `white-space: pre-wrap` dargestellt, sodass mehrzeilige Alarmmonitor-Nachrichten lesbar bleiben.
+Die Visu liest die String-Variable **Nachrichten** der Modulinstanz. Für Schreibaktionen nutzt sie `IPS_RequestAction` mit den Aktionen `AcknowledgeMessage` bzw. `AddMessage`. Texte werden in der Nachrichtenliste in einem aufklappbaren Bereich mit `white-space: pre-wrap` dargestellt, sodass mehrzeilige Alarmmonitor-Nachrichten lesbar bleiben. AlarmMonitor-Nachrichten werden anhand von `alarmState` gelb (Erstmeldung), rot (Eskalation) oder grün (Alarm aufgehoben) markiert. Nachrichten ohne dieses Feld behalten die Standarddarstellung.
 
 Die Seite **Nachrichten** wird nur im Seitenmenü aufgeführt. Die Filter Offen/Quittiert bleiben beim Scrollen oben sichtbar. Der Seitenkopf zeigt die Anzahl offener Nachrichten.
 
