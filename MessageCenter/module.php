@@ -84,22 +84,42 @@ class MessageCenter extends IPSModule
         }
     }
 
-    private function AddMessageText(string $text): void
+    private function AddMessageText(string $payload): void
     {
+        $text = $payload;
+        $alarmState = null;
+        $envelope = json_decode($payload, true);
+        if (
+            is_array($envelope)
+            && (string)($envelope['source'] ?? '') === 'AlarmMonitor'
+            && isset($envelope['text'])
+            && is_string($envelope['text'])
+        ) {
+            $text = $envelope['text'];
+            $candidate = (string)($envelope['alarmState'] ?? '');
+            if (in_array($candidate, ['initial', 'escalation', 'resolved'], true)) {
+                $alarmState = $candidate;
+            }
+        }
+
         $text = str_replace(["\r\n", "\r"], "\n", $text);
         if (trim($text) === '') {
             throw new InvalidArgumentException('Der Nachrichtentext darf nicht leer sein.');
         }
 
-        $messages = $this->ReadMessages();
-        $messages[] = [
+        $message = [
             'id' => bin2hex(random_bytes(12)),
             'text' => $text,
             'createdAt' => time(),
             'acknowledged' => false,
             'acknowledgedAt' => null
         ];
+        if ($alarmState !== null) {
+            $message['alarmState'] = $alarmState;
+        }
 
+        $messages = $this->ReadMessages();
+        $messages[] = $message;
         $this->WriteMessages($messages);
     }
 
